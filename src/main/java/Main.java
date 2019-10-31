@@ -14,8 +14,8 @@ import org.json.JSONObject;
 public class Main {
 
     //intialize sandbox stuff
-    private static final String clientId = "AZabDGTt_TcFSJnvMwkDUe1g0aqwfEjsDNxcgFtvGMQFX3Lq00WS4OQ82vvdeN_AaB71ZSou2YiM8uc5";
-    private static final String clientSecret = "EAZhSs4sDDZ5rvtg2hh7muuu2wE3RDUwiSuvalYwyuFSFZVAKx-V4lA5QJmFwN4kwoDKiNhPt_IlORT5";
+    private static final String clientId = "yourClientId";
+    private static final String clientSecret = "yourClientSecret";
 
     //setup paypal envrionment
     public static PayPalEnvironment environment = new PayPalEnvironment.Sandbox(clientId, clientSecret);
