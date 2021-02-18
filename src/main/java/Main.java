@@ -1,4 +1,3 @@
-
 import com.braintreepayments.http.serializer.Json;
 import com.paypal.core.PayPalEnvironment;
 import com.paypal.core.PayPalHttpClient;
@@ -8,38 +7,32 @@ import com.paypal.orders.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
-import org.json.JSONObject;
 
 public class Main {
 
-    //intialize sandbox stuff
-    private static final String clientId = "yourClientId";
-    private static final String clientSecret = "yourClientSecret";
-
-    //setup paypal envrionment
-    public static PayPalEnvironment environment = new PayPalEnvironment.Sandbox(clientId, clientSecret);
-    //Create client for environment
-    private static PayPalHttpClient client = new PayPalHttpClient(environment);
-
     public static void main(String args[])
     {
+        String orderid;
         PayPalOrderClient ppOrderclient = new PayPalOrderClient();
-        createPayPalOrder(ppOrderclient);
+        System.out.println("---------- Creating order -----------");
+        orderid = createPayPalOrder(ppOrderclient, true);
 
-        System.out.println("Capturing order");
+        // uncomment capturing part after you approve the payment
+        // orderid = "8M024637NR407413J";
         try {
-            captureOrder("6Y052301VR390470V");
+            // System.out.println("---------- Capturing order -----------");
+            // captureOrder(orderid, ppOrderclient);
+            System.out.println("---------- Getting order details-----------");
+            getOrder(orderid, ppOrderclient);
         } catch (Exception  e) {
             e.printStackTrace();
         }
 
-
     }
-    public static String createPayPalOrder(PayPalOrderClient client)
+    public static String createPayPalOrder(PayPalOrderClient client, boolean debug)
     {
-        Order order = null;
-
         //Construct a request object and set desired parameters
         //Here orderscreaterequest creates a post request to v2/checkout/orders
 
@@ -49,7 +42,7 @@ public class Main {
         orderRequest.checkoutPaymentIntent("CAPTURE");
 
         //Create application context with return url upon payer completion.
-        ApplicationContext applicationContext = new ApplicationContext().returnUrl("http://52.207.231.135:8000");
+        ApplicationContext applicationContext = new ApplicationContext().returnUrl("https://www.paypal.com/us/home");
 
 
         orderRequest.applicationContext(applicationContext);
@@ -66,10 +59,16 @@ public class Main {
 
             // If call returns body in response, you can get the de-serialized version by
             // calling result() on the response
-            order = response.result();
-            System.out.println("Order ID: " + order.id());
-            order.links().forEach(link -> System.out.println(link.rel() + " => " + link.method() + ":" + link.href()));
-            return order.id();
+            if (debug) {
+                if (response.statusCode() == 201) {
+                    System.out.println("Status Code: " + response.statusCode());
+                    System.out.println("Status: " + response.result().status());
+                    System.out.println("Order ID: " + response.result().id());
+                    response.result().links().forEach(link -> System.out.println(link.rel() + " => " + link.method() + ":" + link.href()));
+                }
+            }
+
+            return response.result().id();
         } catch (IOException ioe) {
             System.err.println("*******COULD NOT CREATE ORDER*******");
             if (ioe instanceof HttpException) {
@@ -87,7 +86,7 @@ public class Main {
 
     }
 
-    public void captureOrder(String orderID, PayPalOrderClient orderClient)
+    public static void captureOrder(String orderID, PayPalOrderClient orderClient)
     {
         Order order = null;
         OrdersCaptureRequest request = new OrdersCaptureRequest(orderID);
@@ -109,6 +108,7 @@ public class Main {
         } catch (IOException ioe) {
             if (ioe instanceof HttpException) {
                 // Something went wrong server-side
+
                 HttpException he = (HttpException) ioe;
                 System.out.println(he.getMessage());
                 he.headers().forEach(x -> System.out.println(x + " :" + he.headers().header(x)));
@@ -119,55 +119,11 @@ public class Main {
 
     }
 
-    public void getOrder(String orderId, PayPalOrderClient orderClient) throws IOException {
+    public static void getOrder(String orderId, PayPalOrderClient orderClient) throws IOException {
+
         OrdersGetRequest request = new OrdersGetRequest(orderId);
         HttpResponse<Order> response = orderClient.client.execute(request);
         System.out.println("Full response body:" + (new Json().serialize(response.result())));
-        // System.out.println(new JSONObject(new Json().serialize(response.result())).toString(4));
-    }
-
-    public static void captureOrder(String orderID)
-    {
-        Order order = null;
-        OrdersCaptureRequest request = new OrdersCaptureRequest(orderID);
-
-        try {
-
-            // Call API with your client and get a response for your call
-            HttpResponse<Order> response = client.execute(request);
-
-            // If call returns body in response, you can get the de-serialized version by
-            // calling result() on the response
-            order = response.result();
-            System.out.println("Payer ID: " + order.payer().payerId());
-
-            System.out.println("Capture ID: " + order.purchaseUnits().get(0).payments().captures().get(0).id());
-            order.payer().payerId();
-            order.purchaseUnits().get(0).payments().captures().get(0).links()
-                    .forEach(link -> System.out.println(link.rel() + " => " + link.method() + ":" + link.href()));
-        } catch (IOException ioe) {
-            if (ioe instanceof HttpException) {
-                // Something went wrong server-side
-                HttpException he = (HttpException) ioe;
-                System.out.println(he.getMessage());
-                he.headers().forEach(x -> System.out.println(x + " :" + he.headers().header(x)));
-            } else {
-                // Something went wrong client-side
-            }
-        }
-
-    }
-
-    /**
-     * Method to perform sample GET on an order
-     *
-     * @throws IOException Exceptions from API if any
-     */
-    public static void getOrder(String orderId) throws IOException {
-        OrdersGetRequest request = new OrdersGetRequest(orderId);
-        HttpResponse<Order> response = client.execute(request);
-        System.out.println("Full response body:" + (new Json().serialize(response.result())));
-       // System.out.println(new JSONObject(new Json().serialize(response.result())).toString(4));
     }
 }
 
@@ -175,6 +131,10 @@ class PayPalOrderClient
 {
     private final String clientId = "yourClientId";
     private final String clientSecret = "yourClientSecret";
+
+    {
+        System.out.println(new String(Base64.getEncoder().encode((clientId + ":" + clientSecret).getBytes())));
+    }
 
     //setup paypal envrionment
     public PayPalEnvironment environment = new PayPalEnvironment.Sandbox(clientId, clientSecret);
